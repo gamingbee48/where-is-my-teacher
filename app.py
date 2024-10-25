@@ -17,4 +17,5 @@ def handle_position(data):
     socketio.emit('update_map', data, namespace='/')
 
 if __name__ == '__main__':
-    socketio.run(app)
+    # socketio.run(app) wird nur lokal verwendet
+    socketio.run(app, debug=True)  # Für die lokale Entwicklung
