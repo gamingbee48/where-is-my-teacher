@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Map Update</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        
+        // Personenliste mit Farben
+        const people = [
+            { name: "Person 1", color: "red" },
+            { name: "Person 2", color: "blue" },
+            { name: "Person 3", color: "green" },
+            { name: "Person 4", color: "orange" },
+            { name: "Person 5", color: "purple" }
+        ];
+
+        let selectedPerson = null;
+        const markers = {}; // Marker-Objekte für jede Person
+
+        // Auswahl einer Person und Ändern der Markerfarbe
+        function selectPerson(index) {
+            selectedPerson = people[index];
+            updatePersonList();
+        }
+
+        // Aktualisiere die Personenliste, um die ausgewählte Person hervorzuheben
+        function updatePersonList() {
+            const list = document.getElementById('person-list');
+            list.innerHTML = '';
+            people.forEach((person, index) => {
+                const personItem = document.createElement('button');
+                personItem.textContent = person.name;
+                personItem.style.backgroundColor = person.color;
+                personItem.style.color = "white";
+                personItem.style.border = selectedPerson === person ? "2px solid black" : "none";
+                personItem.onclick = () => selectPerson(index);
+                list.appendChild(personItem);
+            });
+        }
+
+        // Empfange Positionsdaten und aktualisiere den entsprechenden Marker
+        socket.on('update_map', function(data) {
+            updateMarker(data);
+        });
+
+        // Sende die Position (relativ zur Kartenbildgröße)
+        function sendPosition(relativeX, relativeY, direction) {
+            const positionData = { x: relativeX, y: relativeY, direction: direction, person: selectedPerson.name };
+            socket.emit('update_position', positionData);
+        }
+
+        // Aktualisiere oder erstelle den Marker auf der Karte für die jeweilige Person
+        function updateMarker(data) {
+            const map = document.getElementById('map');
+            
+            // Erstelle den Marker, falls er noch nicht existiert
+            if (!markers[data.person]) {
+                const newMarker = document.createElement('div');
+                newMarker.classList.add('marker');
+                newMarker.style.backgroundColor = people.find(p => p.name === data.person).color;
+                map.appendChild(newMarker);
+                markers[data.person] = newMarker;
+            }
+
+            // Setze die Position und Richtung des Markers
+            const marker = markers[data.person];
+            marker.style.left = (data.x * map.offsetWidth) + 'px';
+            marker.style.top = (data.y * map.offsetHeight) + 'px';
+            marker.style.transform = `rotate(${data.direction}deg)`;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const map = document.getElementById('map');
+            
+            // Klick-Event nur, wenn eine Person ausgewählt ist
+            map.addEventListener('click', function(e) {
+                if (!selectedPerson) {
+                    alert("Bitte wählen Sie eine Person aus, bevor Sie die Position festlegen.");
+                    return;
+                }
+                const rect = map.getBoundingClientRect();
+                const relativeX = (e.clientX - rect.left) / rect.width;
+                const relativeY = (e.clientY - rect.top) / rect.height;
+                let direction = 0;
+                sendPosition(relativeX, relativeY, direction);
+            });
+
+            // Erstelle die Personenliste
+            updatePersonList();
+        });
+    </script>
+    <style>
+        /* Setze die Karte auf eine fixe Größe und zentriere sie */
+        #map {
+            width: 800px;
+            height: 600px;
+            background-image: url('/static/deine_karte.jpg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            position: relative;
+            margin: 0 auto;
+        }
+
+        /* Markerstil */
+        .marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            transform-origin: center;
+        }
+
+        /* Stil für die Personenliste */
+        #person-list {
+            display: flex;
+            justify-content: center;
+            margin: 20px;
+        }
+
+        #person-list button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live-Position auf der Karte</h1>
+
+    <!-- Personen-Auswahlliste -->
+    <div id="person-list"></div>
+
+    <!-- Kartenansicht -->
+    <div id="map">
+        <!-- Marker werden dynamisch hinzugefügt -->
+    </div>
+</body>
+</html>
