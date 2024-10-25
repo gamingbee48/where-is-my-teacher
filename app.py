@@ -18,4 +18,4 @@ def handle_position(data):
 
 if __name__ == '__main__':
     # socketio.run(app) wird nur lokal verwendet
-    socketio.run(app, debug=True)  # Für die lokale Entwicklung
+    socketio.run(app, debug=false)  # Für die lokale Entwicklung
